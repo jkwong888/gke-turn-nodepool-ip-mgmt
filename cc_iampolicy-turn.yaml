@@ -1,0 +1,46 @@
+---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: turn-ip-mgr-compute-viewer
+spec:
+  member: serviceAccount:turn-ip-mgr@jkwng-kubevirt-dev-2.iam.gserviceaccount.com
+  resourceRef:
+    kind: Project
+    external: projects/jkwng-kubevirt-dev-2
+  role: roles/compute.viewer
+---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMCustomRole
+metadata:
+  name: computeaccessconfigadmin
+spec:
+  title: Manage VM access configs
+  description: This role only contains two permissions - publish and update
+  permissions:
+    - compute.instances.deleteAccessConfig
+    - compute.instances.addAccessConfig
+    - compute.addresses.use
+  stage: GA
+---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: turn-ip-mgr-compute-access-config-admin
+spec:
+  member: serviceAccount:turn-ip-mgr@jkwng-kubevirt-dev-2.iam.gserviceaccount.com
+  resourceRef:
+    kind: Project
+    external: projects/jkwng-kubevirt-dev-2
+  role: projects/jkwng-kubevirt-dev-2/roles/computeaccessconfigadmin
+---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: turn-ip-mgr-compute-network-user
+spec:
+  member: serviceAccount:turn-ip-mgr@jkwng-kubevirt-dev-2.iam.gserviceaccount.com
+  resourceRef:
+    kind: ComputeSubnetwork
+    external: projects/jkwng-nonprod-vpc/regions/us-central1/subnetworks/kubevirt-dev
+  role: roles/compute.networkUser

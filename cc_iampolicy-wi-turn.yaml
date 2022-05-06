@@ -1,0 +1,12 @@
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicy
+metadata:
+  name: turn-ip-mgr
+spec:
+  resourceRef:
+    kind: IAMServiceAccount
+    name: turn-ip-mgr
+  bindings:
+    - role: roles/iam.workloadIdentityUser
+      members:
+        - serviceAccount:jkwng-kubevirt-dev-2.svc.id.goog[default/turn-ip-mgr]

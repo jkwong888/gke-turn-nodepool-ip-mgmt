@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: turn-ip
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      name: turn-ip
+  template:
+    metadata:
+      labels:
+        name: turn-ip
+    spec:
+      serviceAccountName: turn-ip-mgr
+      nodeSelector:
+        turn: "true"
+      tolerations:
+      - key: turn
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+      initContainers:
+      - name: init-ip
+        image: google/cloud-sdk
+        command: ["/bin/bash", "-exc"]
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        args: 
+        - |
+          gcloud auth list
+          echo "my node is: ${NODE_NAME}"
+          ZONE=$(curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/zone | sed -e 's/.*\/\(.*\)$/\1/') 
+          echo "my zone is: ${ZONE}"
+          CURRENT_IP=$(gcloud compute instances describe ${NODE_NAME} --zone=${ZONE} --format='value(networkInterfaces[0].accessConfigs[0].natIP)')
+          echo "my IP is: ${CURRENT_IP}"
+          TURN_IP=$(gcloud beta compute addresses list --filter labels.turn=true --format='value(address)')
+          echo "turn IP is ${TURN_IP}"
+          if [ ${CURRENT_IP} = ${TURN_IP} ]; then
+            echo "IP is set correctly!"
+            exit 0
+          fi
+
+          ACCESS_CONFIG_NAME=$(gcloud compute instances describe ${NODE_NAME} --zone=${ZONE} --format='value(networkInterfaces[0].accessConfigs[0].name)')
+          if [ ! -z "${ACCESS_CONFIG_NAME}" ]; then
+            /usr/bin/timeout 10 gcloud compute instances delete-access-config ${NODE_NAME} --zone=${ZONE} --access-config-name="${ACCESS_CONFIG_NAME}"
+          fi
+          gcloud compute instances add-access-config ${NODE_NAME} --zone=${ZONE} --access-config-name="${ACCESS_CONFIG_NAME:=external-nat}" --address=${TURN_IP}
+      containers:
+      - name: print-my-ip
+        image: alpine
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          while /bin/true; do
+            PUBLIC_IP=$(//usr/bin/nslookup -type=txt o-o.myaddr.l.google.com ns1.google.com | grep "text =" | awk -F = -e '{print $2;}' | sed -e 's/"//g' | tr -d "[:space:]")
+            echo "My IP is ${PUBLIC_IP}"
+            /bin/sleep 5
+          done
